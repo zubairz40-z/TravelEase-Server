@@ -9,6 +9,7 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// ✅ Environment variables
 const uri = process.env.MONGODB_URI;
 const dbName = process.env.DB_NAME || "travleaseDB";
 
@@ -23,18 +24,18 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
-    console.log("Connected to MongoDB");
+    console.log("✅ Connected to MongoDB");
 
     const db = client.db(dbName);
     const vehiclesCollection = db.collection("vehicles");
     const bookingsCollection = db.collection("bookings");
 
-    // ----- Root -----
+    // ---------------- ROOT ----------------
     app.get("/", (req, res) => {
       res.send("TravelEase server is running 🚗");
     });
 
-    // ----- VEHICLES -----
+    // --------------- VEHICLES ---------------
 
     // Get all vehicles
     app.get("/vehicles", async (req, res) => {
@@ -44,7 +45,9 @@ async function run() {
         res.json(vehicles);
       } catch (error) {
         console.error("Error in GET /vehicles:", error);
-        res.status(500).json({ success: false, error: "Failed to fetch vehicles" });
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to fetch vehicles" });
       }
     });
 
@@ -54,9 +57,10 @@ async function run() {
         const vehicleData = req.body;
 
         if (!vehicleData.vehicleName || !vehicleData.userEmail) {
-          return res
-            .status(400)
-            .json({ success: false, error: "vehicleName and userEmail are required" });
+          return res.status(400).json({
+            success: false,
+            error: "vehicleName and userEmail are required",
+          });
         }
 
         vehicleData.createdAt = new Date();
@@ -70,7 +74,9 @@ async function run() {
         });
       } catch (error) {
         console.error("Error in POST /vehicles:", error);
-        res.status(500).json({ success: false, error: "Failed to add vehicle" });
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to add vehicle" });
       }
     });
 
@@ -80,20 +86,26 @@ async function run() {
         const id = req.params.id;
 
         if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ success: false, error: "Invalid vehicle id" });
+          return res
+            .status(400)
+            .json({ success: false, error: "Invalid vehicle id" });
         }
 
         const query = { _id: new ObjectId(id) };
         const vehicle = await vehiclesCollection.findOne(query);
 
         if (!vehicle) {
-          return res.status(404).json({ success: false, error: "Vehicle not found" });
+          return res
+            .status(404)
+            .json({ success: false, error: "Vehicle not found" });
         }
 
         res.json(vehicle);
       } catch (error) {
         console.error("Error in GET /vehicles/:id:", error);
-        res.status(500).json({ success: false, error: "Failed to fetch vehicle" });
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to fetch vehicle" });
       }
     });
 
@@ -103,9 +115,10 @@ async function run() {
         const email = req.query.email;
 
         if (!email) {
-          return res
-            .status(400)
-            .json({ success: false, error: "Email query parameter is required" });
+          return res.status(400).json({
+            success: false,
+            error: "Email query parameter is required",
+          });
         }
 
         const query = { userEmail: email };
@@ -117,7 +130,10 @@ async function run() {
         res.json(vehicles);
       } catch (error) {
         console.error("Error in GET /my-vehicles:", error);
-        res.status(500).json({ success: false, error: "Failed to fetch user vehicles" });
+        res.status(500).json({
+          success: false,
+          error: "Failed to fetch user vehicles",
+        });
       }
     });
 
@@ -127,7 +143,9 @@ async function run() {
         const id = req.params.id;
 
         if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ success: false, error: "Invalid vehicle id" });
+          return res
+            .status(400)
+            .json({ success: false, error: "Invalid vehicle id" });
         }
 
         const updateData = req.body;
@@ -149,7 +167,9 @@ async function run() {
         const result = await vehiclesCollection.updateOne(filter, updateDoc);
 
         if (result.matchedCount === 0) {
-          return res.status(404).json({ success: false, error: "Vehicle not found" });
+          return res
+            .status(404)
+            .json({ success: false, error: "Vehicle not found" });
         }
 
         res.json({
@@ -159,7 +179,9 @@ async function run() {
         });
       } catch (error) {
         console.error("Error in PUT /vehicles/:id:", error);
-        res.status(500).json({ success: false, error: "Failed to update vehicle" });
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to update vehicle" });
       }
     });
 
@@ -169,37 +191,59 @@ async function run() {
         const id = req.params.id;
 
         if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ success: false, error: "Invalid vehicle id" });
+          return res
+            .status(400)
+            .json({ success: false, error: "Invalid vehicle id" });
         }
 
         const filter = { _id: new ObjectId(id) };
         const result = await vehiclesCollection.deleteOne(filter);
 
         if (result.deletedCount === 0) {
-          return res.status(404).json({ success: false, error: "Vehicle not found" });
+          return res
+            .status(404)
+            .json({ success: false, error: "Vehicle not found" });
         }
 
         res.json({ success: true, message: "Vehicle deleted successfully" });
       } catch (error) {
         console.error("Error in DELETE /vehicles/:id:", error);
-        res.status(500).json({ success: false, error: "Failed to delete vehicle" });
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to delete vehicle" });
       }
     });
 
-    // ----- BOOKINGS -----
+    // --------------- BOOKINGS ---------------
 
     // Create booking
     app.post("/bookings", async (req, res) => {
       try {
         const bookingData = req.body;
 
-        // Only require vehicleId and userEmail
-        if (!bookingData.vehicleId || !bookingData.userEmail) {
-  return res.status(400).json({
-    success: false,
-    error: "vehicleId and userEmail are required",
-  });
-}
+        // ✅ Require these fields (harder version)
+        if (
+          !bookingData.vehicleId ||
+          !bookingData.userEmail ||
+          !bookingData.startDate ||
+          !bookingData.endDate
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: "vehicleId, userEmail, startDate and endDate are required",
+          });
+        }
+
+        // Optional: Normalize dates before storing
+        try {
+          bookingData.startDate = new Date(bookingData.startDate);
+          bookingData.endDate = new Date(bookingData.endDate);
+        } catch {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid date format for startDate or endDate",
+          });
+        }
 
         bookingData.status = bookingData.status || "pending";
         bookingData.createdAt = new Date();
@@ -213,7 +257,9 @@ async function run() {
         });
       } catch (error) {
         console.error("Error in POST /bookings:", error);
-        res.status(500).json({ success: false, error: "Failed to create booking" });
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to create booking" });
       }
     });
 
@@ -223,9 +269,10 @@ async function run() {
         const email = req.query.email;
 
         if (!email) {
-          return res
-            .status(400)
-            .json({ success: false, error: "Email query parameter is required" });
+          return res.status(400).json({
+            success: false,
+            error: "Email query parameter is required",
+          });
         }
 
         const query = { userEmail: email };
@@ -237,7 +284,10 @@ async function run() {
         res.json(bookings);
       } catch (error) {
         console.error("Error in GET /my-bookings:", error);
-        res.status(500).json({ success: false, error: "Failed to fetch user bookings" });
+        res.status(500).json({
+          success: false,
+          error: "Failed to fetch user bookings",
+        });
       }
     });
 
@@ -247,24 +297,30 @@ async function run() {
         const id = req.params.id;
 
         if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ success: false, error: "Invalid booking id" });
+          return res
+            .status(400)
+            .json({ success: false, error: "Invalid booking id" });
         }
 
         const filter = { _id: new ObjectId(id) };
         const result = await bookingsCollection.deleteOne(filter);
 
         if (result.deletedCount === 0) {
-          return res.status(404).json({ success: false, error: "Booking not found" });
+          return res
+            .status(404)
+            .json({ success: false, error: "Booking not found" });
         }
 
         res.json({ success: true, message: "Booking deleted successfully" });
       } catch (error) {
         console.error("Error in DELETE /bookings/:id:", error);
-        res.status(500).json({ success: false, error: "Failed to delete booking" });
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to delete booking" });
       }
     });
 
-    // ----- START SERVER -----
+    // --------------- START SERVER ---------------
     app.listen(port, () => {
       console.log(`🚀 Server is running on port ${port}`);
     });
