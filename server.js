@@ -313,7 +313,7 @@ async function run() {
 
         res.json({ success: true, message: "Booking deleted successfully" });
       } catch (error) {
-        console.error("Error in DELETE /bookings/:id:", error);
+        console.error("Error done in DELETE /bookings/:id:", error);
         res
           .status(500)
           .json({ success: false, error: "Failed to delete booking" });
