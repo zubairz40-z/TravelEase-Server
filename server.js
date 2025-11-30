@@ -3,64 +3,62 @@ const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
-
-
-const app =express();
+const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
 const uri = process.env.MONGODB_URI;
-const dbName =process.env.DB_NAME || "travleaseDB"
+const dbName = process.env.DB_NAME || "travleaseDB";
 
-const client = new MongoClient(uri,{
-    serverApi:{
-        version: ServerApiVersion.v1,
-        strict:true,
-        deprecationErrors:true,
-    }
-})
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
 
-async function run(){
-    try{
-        await client.connect();
-        console.log("Connected to MongoDB");
+async function run() {
+  try {
+    await client.connect();
+    console.log("Connected to MongoDB");
 
-        const db=client.db(dbName);
-const vehiclesCollection = db.collection("vehicles");
+    const db = client.db(dbName);
+    const vehiclesCollection = db.collection("vehicles");
     const bookingsCollection = db.collection("bookings");
 
-
+    // ----- Root -----
     app.get("/", (req, res) => {
       res.send("TravelEase server is running 🚗");
     });
 
-    app.get("/vehicles", async (req, res) => {
-      try{
-        const cursor =vehiclesCollection
-        .find()
-        .sort({createdAt: -1})
+    // ----- VEHICLES -----
 
-        const vehicles =await cursor.toArray();
+    // Get all vehicles
+    app.get("/vehicles", async (req, res) => {
+      try {
+        const cursor = vehiclesCollection.find().sort({ createdAt: -1 });
+        const vehicles = await cursor.toArray();
         res.json(vehicles);
-      }catch(error){
-        console.error("Error in GET/Vehicles:",error)
-        res.status(500).json({success:false,error:"Failed to fetch Vehicles"})
+      } catch (error) {
+        console.error("Error in GET /vehicles:", error);
+        res.status(500).json({ success: false, error: "Failed to fetch vehicles" });
       }
-      });
-      app.post("/vehicles", async (req, res) => {
+    });
+
+    // Add vehicle
+    app.post("/vehicles", async (req, res) => {
       try {
         const vehicleData = req.body;
 
-        // Basic check: you can add more later if you want
         if (!vehicleData.vehicleName || !vehicleData.userEmail) {
           return res
             .status(400)
             .json({ success: false, error: "vehicleName and userEmail are required" });
         }
 
-        // Add createdAt so you can sort by latest
         vehicleData.createdAt = new Date();
 
         const result = await vehiclesCollection.insertOne(vehicleData);
@@ -75,13 +73,12 @@ const vehiclesCollection = db.collection("vehicles");
         res.status(500).json({ success: false, error: "Failed to add vehicle" });
       }
     });
-  
-        // 3) READ One Vehicle by ID  --> GET /vehicles/:id
+
+    // Get one vehicle by ID
     app.get("/vehicles/:id", async (req, res) => {
       try {
         const id = req.params.id;
 
-        // if id is not a valid ObjectId
         if (!ObjectId.isValid(id)) {
           return res.status(400).json({ success: false, error: "Invalid vehicle id" });
         }
@@ -100,7 +97,7 @@ const vehiclesCollection = db.collection("vehicles");
       }
     });
 
-    // 4) READ Vehicles of Logged-in User  --> GET /my-vehicles?email=...
+    // Get vehicles of logged-in user
     app.get("/my-vehicles", async (req, res) => {
       try {
         const email = req.query.email;
@@ -112,7 +109,10 @@ const vehiclesCollection = db.collection("vehicles");
         }
 
         const query = { userEmail: email };
-        const vehicles = await vehiclesCollection.find(query).sort({ createdAt: -1 }).toArray();
+        const vehicles = await vehiclesCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
 
         res.json(vehicles);
       } catch (error) {
@@ -121,7 +121,7 @@ const vehiclesCollection = db.collection("vehicles");
       }
     });
 
-    // 5) UPDATE Vehicle  --> PUT /vehicles/:id
+    // Update vehicle
     app.put("/vehicles/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -163,7 +163,7 @@ const vehiclesCollection = db.collection("vehicles");
       }
     });
 
-    // 6) DELETE Vehicle  --> DELETE /vehicles/:id
+    // Delete vehicle
     app.delete("/vehicles/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -186,23 +186,22 @@ const vehiclesCollection = db.collection("vehicles");
       }
     });
 
-    // ---------- Booking ROUTES ----------
+    // ----- BOOKINGS -----
 
+    // Create booking
     app.post("/bookings", async (req, res) => {
       try {
         const bookingData = req.body;
 
-        // Basic safety check
-        if (!bookingData.vehicleId || !bookingData.userEmail || !bookingData.startDate || !bookingData.endDate) {
-          return res
-            .status(400)
-            .json({ success: false, error: "vehicleId, userEmail, startDate and endDate are required" });
-        }
+        // Only require vehicleId and userEmail
+        if (!bookingData.vehicleId || !bookingData.userEmail) {
+  return res.status(400).json({
+    success: false,
+    error: "vehicleId and userEmail are required",
+  });
+}
 
-        // Optionally convert vehicleId to ObjectId if you store it that way
-        // bookingData.vehicleId = new ObjectId(bookingData.vehicleId);
-
-        bookingData.status = bookingData.status || "pending"; // e.g., pending | confirmed | cancelled
+        bookingData.status = bookingData.status || "pending";
         bookingData.createdAt = new Date();
 
         const result = await bookingsCollection.insertOne(bookingData);
@@ -218,7 +217,7 @@ const vehiclesCollection = db.collection("vehicles");
       }
     });
 
-    // 2) READ Bookings of Logged-in User  --> GET /my-bookings?email=...
+    // Get bookings for logged-in user
     app.get("/my-bookings", async (req, res) => {
       try {
         const email = req.query.email;
@@ -242,7 +241,7 @@ const vehiclesCollection = db.collection("vehicles");
       }
     });
 
-    // 3) DELETE / Cancel Booking  --> DELETE /bookings/:id
+    // Delete / cancel booking
     app.delete("/bookings/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -265,8 +264,7 @@ const vehiclesCollection = db.collection("vehicles");
       }
     });
 
-
-    // 5) Start server
+    // ----- START SERVER -----
     app.listen(port, () => {
       console.log(`🚀 Server is running on port ${port}`);
     });
